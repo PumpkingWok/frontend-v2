@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
 import StakedPoolsTable from '@/components/contextual/pages/pools/StakedPoolsTable.vue';
@@ -11,7 +10,6 @@ import PoolsTable from '@/components/tables/PoolsTable/PoolsTable.vue';
 import usePoolFilters from '@/composables/pools/usePoolFilters';
 import usePools from '@/composables/pools/usePools';
 import useStreamedPoolsQuery from '@/composables/queries/useStreamedPoolsQuery';
-import useAlerts, { AlertPriority, AlertType } from '@/composables/useAlerts';
 import useBreakpoints from '@/composables/useBreakpoints';
 import { isMigratablePool } from '@/composables/usePool';
 import useTokens from '@/composables/useTokens';
@@ -22,7 +20,6 @@ import useWeb3 from '@/services/web3/useWeb3';
 
 // COMPOSABLES
 const router = useRouter();
-const { t } = useI18n();
 const { isWalletReady, appNetworkConfig, isWalletConnecting } = useWeb3();
 const isElementSupported = appNetworkConfig.supportsElementPools;
 const {
@@ -31,16 +28,14 @@ const {
   removeSelectedToken
 } = usePoolFilters();
 
-const { userPools, isLoadingPools, isLoadingUserPools, poolsQuery } = usePools(
-  selectedTokens
-);
+const { userPools, isLoadingUserPools } = usePools();
 const {
   dataStates,
   result: investmentPools,
   loadMore,
-  isLoadingMore
+  isLoadingMore,
+  isComplete
 } = useStreamedPoolsQuery(selectedTokens);
-const { addAlert, removeAlert } = useAlerts();
 const { upToMediumBreakpoint } = useBreakpoints();
 const { priceQueryLoading } = useTokens();
 
@@ -54,23 +49,6 @@ const showMigrationColumn = computed(() =>
     );
   })
 );
-
-// userPools.value[0].shares
-watch(poolsQuery.error, () => {
-  if (poolsQuery.error.value) {
-    addAlert({
-      id: 'pools-fetch-error',
-      label: t('alerts.pools-fetch-error'),
-      type: AlertType.ERROR,
-      persistent: true,
-      action: poolsQuery.refetch.value,
-      actionLabel: t('alerts.retry-label'),
-      priority: AlertPriority.MEDIUM
-    });
-  } else {
-    removeAlert('pools-fetch-error');
-  }
-});
 
 const migratableUserPools = computed(() => {
   return userPools.value.filter(pool => isMigratablePool(pool));
@@ -128,7 +106,7 @@ function navigateToCreatePool() {
         >
           <TokenSearchInput
             v-model="selectedTokens"
-            :loading="isLoadingPools"
+            :loading="false"
             @add="addSelectedToken"
             @remove="removeSelectedToken"
             class="w-full md:w-2/3"
